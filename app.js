@@ -522,7 +522,7 @@ function rotate90(srcUrl) {
       rot.width = ch; rot.height = cw;
       const rctx = rot.getContext("2d");
       rctx.translate(ch / 2, cw / 2);
-      rctx.rotate(Math.PI / 2);
+      rctx.rotate(-Math.PI / 2);   // CCW: text reads top-to-bottom, Enter adds below
       rctx.drawImage(img, minX, minY, cw, ch, -cw / 2, -ch / 2, cw, ch);
 
       // 3. pad to the print width, aligned to the left edge (not centered) on white
