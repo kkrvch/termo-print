@@ -386,8 +386,9 @@ async function renderTextToCanvas() {
   const lineHeight = Math.round(fontSize * 1.32);
   const topPad = Math.round(fontSize * 0.25);
   const botPad = Math.round(fontSize * 0.25);
-  const H = topPad + wrapped.length * lineHeight + botPad;
-  // Landscape sizes the canvas to the longest line; portrait stays at 384.
+  const naturalH = topPad + wrapped.length * lineHeight + botPad;
+  // Landscape: width = longest line (runs along the roll, unlimited); height =
+  // the page height ACROSS the roll (>= 384 print dots), text starting at the top.
   let contentW = 0;
   for (const line of wrapped) {
     let lw = 0;
@@ -395,6 +396,7 @@ async function renderTextToCanvas() {
     if (lw > contentW) contentW = lw;
   }
   const W = landscape ? Math.max(8, Math.ceil(contentW) + PAD_X * 2) : W0;
+  const H = landscape ? Math.max(naturalH, 384) : naturalH;
   tmp.width = W; tmp.height = H;
   ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, H);
   ctx.fillStyle = "#000"; ctx.textBaseline = "alphabetic";
@@ -417,6 +419,19 @@ async function renderTextToCanvas() {
       x += w;
     }
   });
+  // Landscape: rotate the reading-orientation canvas 90° into the print bitmap.
+  // (No crop/pad — the canvas is already sized so the print width is 384.)
+  if (landscape) {
+    const r = document.createElement("canvas");
+    r.width = tmp.height;   // -> print width (>= 384)
+    r.height = tmp.width;   // -> roll length
+    const rc = r.getContext("2d");
+    rc.fillStyle = "#fff"; rc.fillRect(0, 0, r.width, r.height);
+    rc.translate(r.width / 2, r.height / 2);
+    rc.rotate(-Math.PI / 2);   // CCW: reads top-to-bottom, Enter adds below
+    rc.drawImage(tmp, -tmp.width / 2, -tmp.height / 2);
+    return r;
+  }
   return tmp;
 }
 
@@ -594,10 +609,9 @@ async function safePrint(fn, okMsg = "Printed") {
 $("print-text").addEventListener("click", async () => {
   const plain = plainTextFromEditor();
   if (!plain) { toast("Text is empty.", "err"); return; }
-  const canvas = await renderTextToCanvas();
+  const canvas = await renderTextToCanvas();   // already oriented (rotated in landscape)
   if (!canvas) { toast("Text is empty.", "err"); return; }
-  const dataUrl = await orient(canvas.toDataURL("image/png"));
-  safePrint(() => printPaced(dataUrl, "threshold"));
+  safePrint(() => printPaced(canvas.toDataURL("image/png"), "threshold"));
 });
 $("print-image").addEventListener("click", async () => {
   if (!imageDataUrl) { toast("Choose an image first.", "err"); return; }
@@ -631,8 +645,7 @@ async function renderPreview() {
       body.innerHTML = "<span>Type something to see it here ↑</span>";
       return;
     }
-    const src = await orient(canvas.toDataURL("image/png"));
-    if (myTurn !== previewSeq) return;
+    const src = canvas.toDataURL("image/png");   // already oriented
     body.className = "receipt-body";
     body.innerHTML = "";
     const img = document.createElement("img");

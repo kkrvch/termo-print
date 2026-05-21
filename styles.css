@@ -774,7 +774,7 @@ input[type=range]::-moz-range-thumb {
   overflow-wrap: anywhere;
   min-height: 140px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;   /* content starts at the top of the receipt */
   justify-content: center;
 }
 .receipt-body.empty {
@@ -785,6 +785,8 @@ input[type=range]::-moz-range-thumb {
   font-size: 13px;
   letter-spacing: 0.04em;
   font-family: var(--font-mono);
+  align-items: center;       /* but keep the placeholder centered */
+  justify-content: center;
 }
 .receipt-render {
   display: block;
