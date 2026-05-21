@@ -1,8 +1,8 @@
-# termo
-
-### Live at [kkrvch.github.io/termo-print](https://kkrvch.github.io/termo-print/)
+# Live: [kkrvch.github.io/termo-print](https://kkrvch.github.io/termo-print/)
 
 Works in Chrome on Android or desktop (needs Web Bluetooth).
+
+# termo
 
 Print text, images, and QR codes to an **MX10** (or any cat-printer-compatible)
 thermal printer straight from your browser, over Bluetooth. No app to install,
