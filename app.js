@@ -470,17 +470,52 @@ document.querySelectorAll("#orient-seg button").forEach(b => {
     renderPreview();
   });
 });
+const PRINT_W = 384;   // physical print width in dots
+
+// Rotate 90° for landscape. Crops surrounding whitespace first, then pads the
+// result to at least PRINT_W wide so the printer's scale-to-384 step does NOT
+// upscale a narrow rotated strip (which is what blew the height up to full).
 function rotate90(srcUrl) {
   return new Promise(resolve => {
     const img = new Image();
     img.onload = () => {
+      const W = img.width, H = img.height;
+
+      // 1. find the content bounding box (non-white, non-transparent pixels)
+      let minX = 0, minY = 0, maxX = W - 1, maxY = H - 1;
+      try {
+        const o = document.createElement("canvas");
+        o.width = W; o.height = H;
+        const octx = o.getContext("2d");
+        octx.drawImage(img, 0, 0);
+        const d = octx.getImageData(0, 0, W, H).data;
+        minX = W; minY = H; maxX = -1; maxY = -1;
+        for (let y = 0; y < H; y++) {
+          for (let x = 0; x < W; x++) {
+            const i = (y * W + x) * 4;
+            const bg = d[i + 3] < 10 || (d[i] > 244 && d[i + 1] > 244 && d[i + 2] > 244);
+            if (!bg) {
+              if (x < minX) minX = x; if (x > maxX) maxX = x;
+              if (y < minY) minY = y; if (y > maxY) maxY = y;
+            }
+          }
+        }
+        if (maxX < minX) { minX = 0; minY = 0; maxX = W - 1; maxY = H - 1; } // blank
+      } catch { /* tainted canvas — fall back to no crop */ }
+
+      const cw = maxX - minX + 1, ch = maxY - minY + 1;
+
+      // 2. rotate the cropped region 90°; pad width to PRINT_W, centered, on white
       const c = document.createElement("canvas");
-      c.width = img.height; c.height = img.width;
+      c.width = Math.max(ch, PRINT_W);
+      c.height = cw;
       const cx = c.getContext("2d");
       cx.fillStyle = "#fff"; cx.fillRect(0, 0, c.width, c.height);
+      cx.save();
       cx.translate(c.width / 2, c.height / 2);
       cx.rotate(Math.PI / 2);
-      cx.drawImage(img, -img.width / 2, -img.height / 2);
+      cx.drawImage(img, minX, minY, cw, ch, -cw / 2, -ch / 2, cw, ch);
+      cx.restore();
       resolve(c.toDataURL("image/png"));
     };
     img.onerror = () => resolve(srcUrl);
