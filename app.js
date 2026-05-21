@@ -321,9 +321,13 @@ async function renderTextToCanvas() {
     await document.fonts.load(`bold ${fontSize}px ${fam}`);
     await document.fonts.load(`italic ${fontSize}px ${fam}`);
   } catch {}
-  const W = 384;
+  const W0 = 384;
   const PAD_X = 4;
-  const inner = W - PAD_X * 2;
+  const landscape = orientation === "landscape";
+  // Portrait wraps to the 384 print width. Landscape does NOT wrap by width —
+  // each line runs as long as you type, and only Enter starts a new line.
+  // (A high cap still guards against a pathologically huge canvas.)
+  const inner = landscape ? 4000 : (W0 - PAD_X * 2);
   const lines = getStyledLines(txt);
   if (lines.length === 0 || lines.every(l => l.length === 0)) return null;
   const tmp = document.createElement("canvas");
@@ -383,6 +387,14 @@ async function renderTextToCanvas() {
   const topPad = Math.round(fontSize * 0.25);
   const botPad = Math.round(fontSize * 0.25);
   const H = topPad + wrapped.length * lineHeight + botPad;
+  // Landscape sizes the canvas to the longest line; portrait stays at 384.
+  let contentW = 0;
+  for (const line of wrapped) {
+    let lw = 0;
+    for (const run of line) { setFont(run); lw += ctx.measureText(run.text).width; }
+    if (lw > contentW) contentW = lw;
+  }
+  const W = landscape ? Math.max(8, Math.ceil(contentW) + PAD_X * 2) : W0;
   tmp.width = W; tmp.height = H;
   ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, H);
   ctx.fillStyle = "#000"; ctx.textBaseline = "alphabetic";
@@ -505,17 +517,21 @@ function rotate90(srcUrl) {
 
       const cw = maxX - minX + 1, ch = maxY - minY + 1;
 
-      // 2. rotate the cropped region 90°; pad width to PRINT_W, centered, on white
+      // 2. rotate the cropped region 90° into a tight canvas
+      const rot = document.createElement("canvas");
+      rot.width = ch; rot.height = cw;
+      const rctx = rot.getContext("2d");
+      rctx.translate(ch / 2, cw / 2);
+      rctx.rotate(Math.PI / 2);
+      rctx.drawImage(img, minX, minY, cw, ch, -cw / 2, -ch / 2, cw, ch);
+
+      // 3. pad to the print width, aligned to the left edge (not centered) on white
       const c = document.createElement("canvas");
       c.width = Math.max(ch, PRINT_W);
       c.height = cw;
       const cx = c.getContext("2d");
       cx.fillStyle = "#fff"; cx.fillRect(0, 0, c.width, c.height);
-      cx.save();
-      cx.translate(c.width / 2, c.height / 2);
-      cx.rotate(Math.PI / 2);
-      cx.drawImage(img, minX, minY, cw, ch, -cw / 2, -ch / 2, cw, ch);
-      cx.restore();
+      cx.drawImage(rot, c.width > ch ? 8 : 0, 0);
       resolve(c.toDataURL("image/png"));
     };
     img.onerror = () => resolve(srcUrl);
