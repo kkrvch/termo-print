@@ -4,9 +4,9 @@ Works in Chrome on Android or desktop (needs Web Bluetooth).
 
 # termo
 
-Print text, images, and QR codes to an **MX10** (or any cat-printer-compatible)
-thermal printer straight from your browser, over Bluetooth. No app to install,
-no account, no server — everything runs on the page itself.
+Print text, images, and QR codes to a **mini thermal printer** straight from your
+browser, over Bluetooth. No app to install, no account, no server — everything
+runs on the page itself.
 
 It is a static site — `index.html`, `styles.css`, `app.js`, a manifest, a
 service worker, and icons. Drop it on any static host with HTTPS and it works.
@@ -30,7 +30,7 @@ service worker, and icons. Drop it on any static host with HTTPS and it works.
 ## Supported printers
 
 Anything the underlying SDK supports: `GB01`, `GB02`, `GB03`, `GT01`, `YT01`,
-`MX05`, `MX06`, `MX08`, `MX10`, and similar cat-printer-compatible models. They
+`MX05`, `MX06`, `MX08`, `MX10`, and similar mini thermal printers. They
 all print 384 dots (about 58 mm) wide.
 
 ## Use it
@@ -68,7 +68,7 @@ printer over Bluetooth.
 ## Credits
 
 - [`@opuu/cat-printer`](https://github.com/opuu/cat-printer) — Web Bluetooth SDK
-  for cat printers.
+  for these printers.
 - [`qrcode`](https://github.com/soldair/node-qrcode) — QR code generation.
 - Inspired by [NaitLee/Cat-Printer](https://github.com/NaitLee/Cat-Printer).
 

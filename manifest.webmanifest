@@ -1,7 +1,7 @@
 {
-  "name": "termo — print to your MX10",
+  "name": "termo — print to your thermal printer",
   "short_name": "termo",
-  "description": "Print text, images, and QR codes to your MX10 thermal printer from the browser. No accounts, no ads.",
+  "description": "Print text, images, and QR codes to your thermal printer from the browser. No accounts, no ads.",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",

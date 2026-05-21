@@ -79,10 +79,10 @@ function panelDisconnected() {
   setPanel({ state: null, name: "No printer", meta: "Tap to connect over Bluetooth", action: "Connect ↗", battery: null });
 }
 function panelConnecting() {
-  setPanel({ state: "busy", name: "Scanning…", meta: "Pick your MX10 in the dialog", action: "Cancel" });
+  setPanel({ state: "busy", name: "Scanning…", meta: "Pick your printer in the dialog", action: "Cancel" });
 }
 function panelConnected() {
-  const name = printer.device?.name || printer.modelName || "MX10";
+  const name = printer.device?.name || printer.modelName || "Printer";
   const st = printer.printerState || {};
   let metaState = "warn";
   let metaText = "Ready to print";
