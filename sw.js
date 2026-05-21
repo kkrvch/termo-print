@@ -1,9 +1,11 @@
 // Minimal service worker: cache the app shell so termo opens offline.
 // The print SDK is loaded from a CDN and needs network on first run.
-const CACHE = 'termo-v9';
+const CACHE = 'termo-v10';
 const ASSETS = [
   '.',
   'index.html',
+  'styles.css',
+  'app.js',
   'manifest.webmanifest',
   'icons/icon-192.png',
   'icons/icon-512.png'

@@ -4,8 +4,8 @@ Print text, images, and QR codes to an **MX10** (or any cat-printer-compatible)
 thermal printer straight from your browser, over Bluetooth. No app to install,
 no account, no server — everything runs on the page itself.
 
-It is a single static `index.html` plus a manifest, a service worker, and two
-icons. Drop it on any static host with HTTPS and it works.
+It is a static site — `index.html`, `styles.css`, `app.js`, a manifest, a
+service worker, and icons. Drop it on any static host with HTTPS and it works.
 
 ## What it does
 
@@ -29,55 +29,11 @@ Anything the underlying SDK supports: `GB01`, `GB02`, `GB03`, `GT01`, `YT01`,
 `MX05`, `MX06`, `MX08`, `MX10`, and similar cat-printer-compatible models. They
 all print 384 dots (about 58 mm) wide.
 
-## Browser support
-
-termo uses the **Web Bluetooth API**, which is available only in Chromium-based
-browsers:
-
-- Works: Chrome, Edge, Opera (desktop and Android).
-- Does not work: Safari and Firefox (no Web Bluetooth), and therefore iOS.
-
-Web Bluetooth also requires a **secure context** — the page must be served over
-`https://` or from `localhost`. Opening the file directly (`file://`) will not
-work.
-
 ## Use it
-
-### Run locally
-
-```bash
-# from the project folder
-python3 -m http.server 8000
-# then open http://localhost:8000 in Chrome
-```
-
-`localhost` counts as a secure context, so Bluetooth works without HTTPS.
-
-1. Turn on the printer and make sure it is not already connected in another app
-   (the vendor app holds the Bluetooth connection and will block the browser).
-2. Tap the status panel on the printer graphic to connect, and pick your device
-   in the Bluetooth chooser.
-3. Type, pick an image, or enter a link, then press print.
-
-### Install as an app
 
 On Android Chrome, open the site and choose "Add to Home screen". The manifest
 and service worker make it launch full-screen like a native app and open offline
 after the first load.
-
-## Deploy
-
-It is a static site, so any static host works (GitHub Pages, Cloudflare Pages,
-Vercel, Netlify). The only requirement is HTTPS.
-
-GitHub Pages, for example: push this repository, then enable
-**Settings -> Pages -> Deploy from a branch -> `main` / root**. All paths are
-relative, so it also works from a project subpath such as
-`https://<user>.github.io/<repo>/`.
-
-Note: the printing SDK and the QR library are loaded from a CDN
-(jsDelivr), so the **first** load needs an internet connection. After that the
-app shell is cached by the service worker.
 
 ## How it works
 
