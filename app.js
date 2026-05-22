@@ -211,7 +211,6 @@ function setPrintEnabled() {
   $("print-text").disabled = !connected;
   $("print-image").disabled = !connected || !imageDataUrl;
   $("print-qr").disabled = !connected || !qrDataUrl;
-  $("feed").disabled = !connected;
 }
 
 /* ============================================================
@@ -477,7 +476,7 @@ async function updateQR() {
 }
 
 /* ============================================================
-   SETTINGS (density + orientation + feed)
+   SETTINGS (density + orientation)
    ============================================================ */
 const energy = $("energy");
 function updateEnergyLabel() {
@@ -561,14 +560,25 @@ async function orient(srcUrl) {
    PRINT (paced bitmap writes, see comment block in source)
    ============================================================ */
 const CMD_BITMAP = 162;
+const CMD_LATTICE = 166;          // 0xA6 — heat-managed print mode control
 const END_FEED = 40;
 const FALLBACK_ROW_DELAY = 10;
+// The official apps bracket the bitmap with these "lattice" sequences. They put
+// the head into the proper heat-managed print mode — without them density/dwell
+// management never fully engages, so prints come out faded. The SDK defines the
+// opcode but never sends it, so we send it ourselves.
+const LATTICE_START = new Uint8Array([0xAA, 0x55, 0x17, 0x38, 0x44, 0x5F, 0x5F, 0x5F, 0x44, 0x38, 0x2C]);
+const LATTICE_END   = new Uint8Array([0xAA, 0x55, 0x17, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x17]);
+// Flow control: send a block of rows, then let the head physically catch up
+// before sending more (mirrors how the stock app prints in "small pieces").
+const CHUNK_ROWS = 24;            // rows per block before we pause for the head
+const CHUNK_PAUSE = 28;           // ms base pause between blocks
+const BUSY_WAIT_MAX = 1500;       // ms cap on waiting for the busy bit to clear
 let txWithResponse = null;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-async function sendRow(rowBytes) {
+async function sendPacket(pkt) {
   const ch = printer.txCharacteristic;
-  const pkt = printer.makeCommand(CMD_BITMAP, rowBytes);
   if (txWithResponse === null) txWithResponse = !!(ch.properties && ch.properties.write);
   if (txWithResponse) {
     await ch.writeValueWithResponse(pkt);
@@ -577,21 +587,44 @@ async function sendRow(rowBytes) {
     await sleep(FALLBACK_ROW_DELAY);
   }
 }
+const sendRow = rowBytes => sendPacket(printer.makeCommand(CMD_BITMAP, rowBytes));
+const sendCmd = (opcode, payload) => sendPacket(printer.makeCommand(opcode, payload));
+
+// Ask the printer how it's doing, then wait while it's busy (or cooling) so we
+// don't outrun the head. Bounded so a missed notification can't stall us.
+async function waitForHead() {
+  try {
+    await printer.getDeviceState();
+    const start = Date.now();
+    while (Date.now() - start < BUSY_WAIT_MAX) {
+      const st = printer.printerState || {};
+      if (!st.busy && !st.overheat) break;
+      await sleep(60);
+    }
+  } catch { /* state read is best-effort; fall through */ }
+}
+
 async function printPaced(dataUrl, dither, rotate = 0) {
   const opts = { dither, rotate, flipH: false, flipV: false, brightness: 128, offset: 0 };
   const bmp = await printer.imageToBitmap(dataUrl, opts);
   await printer.prepare(printer.options.speed ?? 32, +energy.value);
   const bpr = Math.ceil(bmp.width / 8);
+  await sendCmd(CMD_LATTICE, LATTICE_START);
   for (let y = 0; y < bmp.height; y++) {
     await sendRow(bmp.data.slice(y * bpr, y * bpr + bpr));
+    if ((y + 1) % CHUNK_ROWS === 0 && y + 1 < bmp.height) {
+      await sleep(CHUNK_PAUSE);
+      await waitForHead();
+    }
   }
+  await sendCmd(CMD_LATTICE, LATTICE_END);
   await printer.finish(END_FEED);
 }
 
 async function safePrint(fn, okMsg = "Printed") {
   if (!connected) { toast("Connect a printer first.", "err"); return; }
-  const beforeDisabled = ["print-text","print-image","print-qr","feed"].map(id => [id, $(id).disabled]);
-  ["print-text","print-image","print-qr","feed"].forEach(id => $(id).disabled = true);
+  const beforeDisabled = ["print-text","print-image","print-qr"].map(id => [id, $(id).disabled]);
+  ["print-text","print-image","print-qr"].forEach(id => $(id).disabled = true);
   $("receipt").classList.add("printing");
   try {
     printer.options.energy = +energy.value;
@@ -622,7 +655,6 @@ $("print-qr").addEventListener("click", () => {
   if (!qrDataUrl) { toast("Enter some text for the QR code.", "err"); return; }
   safePrint(() => printPaced(qrDataUrl, "threshold"));
 });
-$("feed").addEventListener("click", () => safePrint(() => printer.feed(80), "Paper fed"));
 
 /* ============================================================
    LIVE PREVIEW
